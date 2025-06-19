@@ -1,0 +1,255 @@
+openapi: 3.0.3
+info:
+  title: Client Service API
+  version: 1.0.0
+  description: API for managing client registration, profiles, and verification
+
+servers:
+  - url: /api/v1/clients
+    description: Base API path
+
+paths:
+  /register:
+    post:
+      tags: [Client]
+      summary: Register new client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientRegistration'
+      responses:
+        '201':
+          description: Client registered successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /{clientId}:
+    get:
+      tags: [Client]
+      summary: Get client by ID
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      responses:
+        '200':
+          description: Client data retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Client]
+      summary: Update client profile
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientUpdate'
+      responses:
+        '200':
+          description: Update successful
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /{clientId}/verify:
+    post:
+      tags: [Verification]
+      summary: Submit KYC verification
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KYCRequest'
+      responses:
+        '200':
+          description: Verification submitted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /{clientId}/settings:
+    get:
+      tags: [Settings]
+      summary: Get client settings
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      responses:
+        '200':
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Settings]
+      summary: Update client settings
+      parameters:
+        - $ref: '#/components/parameters/clientId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsUpdate'
+      responses:
+        '200':
+          description: Settings updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  parameters:
+    clientId:
+      name: clientId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Unique client identifier
+
+  schemas:
+    ClientRegistration:
+      type: object
+      required: [firstName, lastName, email, phone, password]
+      properties:
+        firstName:
+          type: string
+          pattern: '^[a-zA-Z\s-]+$'
+          example: John
+        lastName:
+          type: string
+          pattern: '^[a-zA-Z\s-]+$'
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        phone:
+          type: string
+          pattern: '^\+\d{5,15}$'
+          example: +123456789
+        password:
+          type: string
+          minLength: 8
+          example: securePassword
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "123"
+        firstName:
+          type: string
+          example: John
+        lastName:
+          type: string
+          example: Doe
+        email:
+          type: string
+          example: john@example.com
+        phone:
+          type: string
+          example: +123456789
+        status:
+          type: string
+          enum: [REGISTERED, VERIFIED, SUSPENDED]
+          example: VERIFIED
+
+    ClientUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: new.email@example.com
+        phone:
+          type: string
+          pattern: '^\+\d{5,15}$'
+          example: +987654321
+
+    KYCRequest:
+      type: object
+      required: [documentType, documentNumber, issuedDate]
+      properties:
+        documentType:
+          type: string
+          enum: [passport, id_card, driver_license]
+          example: passport
+        documentNumber:
+          type: string
+          example: AA1234567
+        issuedDate:
+          type: string
+          format: date
+          example: 2021-01-01
+
+    Settings:
+      type: object
+      properties:
+        notificationsEnabled:
+          type: boolean
+          example: true
+        preferredLanguage:
+          type: string
+          enum: [en, fr, de, es]
+          example: en
+
+    SettingsUpdate:
+      type: object
+      properties:
+        notificationsEnabled:
+          type: boolean
+          example: false
+        preferredLanguage:
+          type: string
+          enum: [en, fr, de, es]
+          example: fr
+
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          example: CLIENT_NOT_FOUND
+        message:
+          type: string
+          example: Client with provided ID does not exist
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
