@@ -1,10 +1,11 @@
+
 paths:
   /clients:
     post:
       tags:
-      - Client
+        - Client
       summary: Create a new client
-      description: Create client using cognito_id, pesel, and other identifiers.
+      description: Register a user linked by Cognito ID. Stores internal attributes like PESEL.
       requestBody:
         required: true
         content:
@@ -17,15 +18,10 @@ paths:
               properties:
                 cognito_id:
                   type: string
-                  example: "abc123"
+                  example: abc123
                 pesel:
                   type: string
                   example: "90010112345"
-                email:
-                  type: string
-                  format: email
-                phone:
-                  type: string
       responses:
         "201":
           description: Client created successfully
@@ -37,12 +33,12 @@ paths:
   /clients/{id}:
     get:
       tags:
-      - Client
-      summary: Get client by ID
+        - Client
+      summary: Get client by internal ID
       parameters:
         - name: id
           in: path
-          description: Unique client identifier (UUID)
+          description: Internal user ID
           required: true
           schema:
             type: string
@@ -56,15 +52,15 @@ paths:
         "404":
           $ref: '#/components/responses/NotFound'
 
-  /clients/cognito/{cognitoId}:
+  /clients/{cognitoId}:
     get:
       tags:
-      - Client
+        - Client
       summary: Get client by Cognito ID
       parameters:
         - name: cognitoId
           in: path
-          description: Cognito user identifier
+          description: Cognito UUID (sub)
           required: true
           schema:
             type: string
@@ -78,29 +74,62 @@ paths:
         "404":
           $ref: '#/components/responses/NotFound'
 
-  /clients/{id}:
-    put:
-      tags:
-      - Client
-      summary: Update client (limited fields)
-      description: Only allows updating fields present in database (email, phone).
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
+components:
+  schemas:
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "123"
+        cognito_id:
+          type: string
+          description: Reference to Cognito user UUID (sub)
+          example: abc123
+        pesel:
+          type: string
+          description: National ID (PESEL)
+          example: "90010112345"
+        created_at:
+          type: string
+          format: date-time
+          example: "2023-12-10T10:00:00Z"
+
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          items:
             type: string
-          description: Client identifier
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ClientUpdate'
-      responses:
-        "200":
-          description: Client updated successfully
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "404":
-          $ref: '#/components/responses/NotFound'
+          example:
+            - "pesel: Already exists"
+            - "cognito_id: Invalid format"
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
