@@ -1,70 +1,51 @@
-openapi: 3.0.3
-info:
-  title: Client Service API
-  description: "API for managing client registration, profiles, and verification"
-  version: 1.0.0
-servers:
-- url: https://virtserver.swaggerhub.com/andersen-649/client/1.0.0
-  description: SwaggerHub API Auto Mocking
-- url: /api/v1/clients
-  description: Base API path
 paths:
-  /register:
+  /clients:
     post:
       tags:
       - Client
-      summary: Register new client
+      summary: Create a new client
+      description: Create client using cognito_id, pesel, and other identifiers.
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ClientRegistration'
-        required: true
+              type: object
+              required:
+                - cognito_id
+                - pesel
+              properties:
+                cognito_id:
+                  type: string
+                  example: "abc123"
+                pesel:
+                  type: string
+                  example: "90010112345"
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
       responses:
         "201":
-          description: Client registered successfully
+          description: Client created successfully
         "400":
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                InvalidEmail:
-                  value:
-                    errorCode: INVALID_EMAIL
-                    message: Email must be a valid email address
-                WeakPassword:
-                  value:
-                    errorCode: WEAK_PASSWORD
-                    message: Password must be at least 8 characters
+          $ref: '#/components/responses/BadRequest'
         "409":
-          description: Resource conflict
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                EmailExists:
-                  value:
-                    errorCode: EMAIL_EXISTS
-                    message: Email already registered
-                PhoneExists:
-                  value:
-                    errorCode: PHONE_EXISTS
-                    message: Phone number already registered
-  /{clientId}:
+          $ref: '#/components/responses/Conflict'
+
+  /clients/{id}:
     get:
       tags:
       - Client
       summary: Get client by ID
       parameters:
-      - name: clientId
-        in: path
-        description: Unique client identifier
-        required: true
-        schema:
-          type: string
+        - name: id
+          in: path
+          description: Unique client identifier (UUID)
+          required: true
+          schema:
+            type: string
       responses:
         "200":
           description: Client data retrieved
@@ -73,296 +54,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/Client'
         "404":
-          description: Client not found
+          $ref: '#/components/responses/NotFound'
+
+  /clients/cognito/{cognitoId}:
+    get:
+      tags:
+      - Client
+      summary: Get client by Cognito ID
+      parameters:
+        - name: cognitoId
+          in: path
+          description: Cognito user identifier
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Client data retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                NotFound:
-                  value:
-                    errorCode: CLIENT_NOT_FOUND
-                    message: No client found with ID '123'
+                $ref: '#/components/schemas/Client'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /clients/{id}:
     put:
       tags:
       - Client
-      summary: Update client profile
+      summary: Update client (limited fields)
+      description: Only allows updating fields present in database (email, phone).
       parameters:
-      - name: clientId
-        in: path
-        description: Unique client identifier
-        required: true
-        schema:
-          type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Client identifier
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ClientUpdate'
-        required: true
       responses:
         "200":
-          description: Update successful
-        "400":
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                InvalidPhone:
-                  value:
-                    errorCode: INVALID_PHONE
-                    message: Phone number must be in E.164 format (+123456789)
-        "404":
-          $ref: '#/components/responses/NotFound'
-  /{clientId}/verify:
-    post:
-      tags:
-      - Verification
-      summary: Submit KYC verification
-      parameters:
-      - name: clientId
-        in: path
-        description: Unique client identifier
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/KYCRequest'
-        required: true
-      responses:
-        "200":
-          description: Verification submitted
-        "400":
-          description: Invalid KYC data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                ExpiredDocument:
-                  value:
-                    errorCode: DOCUMENT_EXPIRED
-                    message: Document issue date cannot be older than 5 years
-                InvalidDocNumber:
-                  value:
-                    errorCode: INVALID_DOCUMENT
-                    message: Document number must be alphanumeric
-        "409":
-          description: Verification exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                AlreadyVerified:
-                  value:
-                    errorCode: ALREADY_VERIFIED
-                    message: Client already has active verification
-  /{clientId}/settings:
-    get:
-      tags:
-      - Settings
-      summary: Get client settings
-      parameters:
-      - name: clientId
-        in: path
-        description: Unique client identifier
-        required: true
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Settings retrieved
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Settings'
-        "404":
-          $ref: '#/components/responses/NotFound'
-    put:
-      tags:
-      - Settings
-      summary: Update client settings
-      parameters:
-      - name: clientId
-        in: path
-        description: Unique client identifier
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SettingsUpdate'
-        required: true
-      responses:
-        "200":
-          description: Settings updated
+          description: Client updated successfully
         "400":
           $ref: '#/components/responses/BadRequest'
-components:
-  schemas:
-    ClientRegistration:
-      required:
-      - email
-      - firstName
-      - lastName
-      - password
-      - phone
-      type: object
-      properties:
-        firstName:
-          pattern: "^[a-zA-Z\\s-]+$"
-          type: string
-          example: John
-        lastName:
-          pattern: "^[a-zA-Z\\s-]+$"
-          type: string
-          example: Doe
-        email:
-          type: string
-          format: email
-          example: john@example.com
-        phone:
-          pattern: "^\\+\\d{5,15}$"
-          type: string
-          example: "123456789"
-        password:
-          minLength: 8
-          type: string
-          example: securePassword
-    Client:
-      type: object
-      properties:
-        id:
-          type: string
-          example: "123"
-        firstName:
-          type: string
-          example: John
-        lastName:
-          type: string
-          example: Doe
-        email:
-          type: string
-          example: john@example.com
-        phone:
-          type: string
-          example: "123456789"
-        status:
-          type: string
-          example: VERIFIED
-          enum:
-          - REGISTERED
-          - VERIFIED
-          - SUSPENDED
-    ClientUpdate:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-          example: new.email@example.com
-        phone:
-          pattern: "^\\+\\d{5,15}$"
-          type: string
-          example: "987654321"
-    KYCRequest:
-      required:
-      - documentNumber
-      - documentType
-      - issuedDate
-      type: object
-      properties:
-        documentType:
-          type: string
-          example: passport
-          enum:
-          - passport
-          - id_card
-          - driver_license
-        documentNumber:
-          type: string
-          example: AA1234567
-        issuedDate:
-          type: string
-          format: date
-          example: 2021-01-01
-    Settings:
-      type: object
-      properties:
-        notificationsEnabled:
-          type: boolean
-          example: true
-        preferredLanguage:
-          type: string
-          example: en
-          enum:
-          - en
-          - fr
-          - de
-          - es
-    SettingsUpdate:
-      type: object
-      properties:
-        notificationsEnabled:
-          type: boolean
-          example: false
-        preferredLanguage:
-          type: string
-          example: fr
-          enum:
-          - en
-          - fr
-          - de
-          - es
-    Error:
-      type: object
-      properties:
-        errorCode:
-          type: string
-          description: Machine-readable error code
-        message:
-          type: string
-          description: Human-readable error message
-        details:
-          type: array
-          description: Additional error details
-          example:
-          - "email: Invalid format"
-          - "phone: Missing country code"
-          items:
-            type: string
-  responses:
-    BadRequest:
-      description: Invalid request data
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Conflict:
-      description: Resource conflict
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-  parameters:
-    clientId:
-      name: clientId
-      in: path
-      description: Unique client identifier
-      required: true
-      schema:
-        type: string
+        "404":
+          $ref: '#/components/responses/NotFound'
