@@ -1,0 +1,126 @@
+openapi: 3.0.3
+info:
+  title: Auth Service API
+  description: API for managing authorization (internal only; authentication handled by Cognito)
+  version: 1.0.0
+servers:
+  - url: https://virtserver.swaggerhub.com/andersen-649/auth/1.0.0
+    description: SwaggerHub API Auto Mocking
+  - url: /api/v1/auth
+    description: Base API path
+
+paths:
+  /auth/authorize:
+    post:
+      tags:
+        - Authorization
+      summary: Check authorization
+      description: Verify if a user (by Cognito ID) is authorized to perform an action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cognito_id
+                - resource
+                - action
+              properties:
+                cognito_id:
+                  type: string
+                  description: Cognito UUID (sub)
+                  example: abc123
+                resource:
+                  type: string
+                  description: Resource being accessed
+                  example: "client_profile"
+                action:
+                  type: string
+                  description: Action being performed
+                  example: "read"
+      responses:
+        "200":
+          description: Authorization decision
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authorized:
+                    type: boolean
+                    description: Whether the action is authorized
+                  role:
+                    type: string
+                    description: User's role
+                    example: "client"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /auth/roles/{cognitoId}:
+    get:
+      tags:
+        - Authorization
+      summary: Get user roles
+      description: Retrieve roles assigned to a user (only "client" role in current implementation)
+      parameters:
+        - name: cognitoId
+          in: path
+          description: Cognito UUID (sub)
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User roles retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cognito_id:
+                    type: string
+                    description: Cognito UUID (sub)
+                    example: abc123
+                  roles:
+                    type: array
+                    items:
+                      type: string
+                    example: ["client"]
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          items:
+            type: string
+          example:
+            - "cognito_id: Not found"
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
